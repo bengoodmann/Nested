@@ -6,7 +6,7 @@ const { createCanvas, loadImage } = require("canvas");
 const path = require("path");
 
 const User = require("../models/userModel");
-const userSchema = require("../schema/schema");
+
 
 const {
   sendEmailVerification,
@@ -18,10 +18,7 @@ require("dotenv").config();
 const registerUser = async (req, res) => {
   try {
     const { name, email, password } = req.body;
-    const validate = userSchema.validate(req.body);
-    if (validate.error) {
-      return res.status(400).json({ error: validate.error.details[0].message });
-    }
+    
     const checkEmail = await User.findOne({ where: { email } });
     if (checkEmail) {
       return res.status(401).json({ error: "User with this email exists" });
