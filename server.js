@@ -7,6 +7,8 @@ const morgan = require("morgan");
 const fs = require("fs");
 const path = require("path");
 
+const staticDir = path.join(__dirname, "public");
+
 const dbSync = require("./dbSetup");
 const { userVerification } = require("./controllers/userController");
 
@@ -28,6 +30,7 @@ app.use(bodyParser.urlencoded({ extended: true }));
 app.use(helmet());
 app.use(morgan("dev"));
 app.use(morgan("common", { stream: accessLogStream }));
+app.use(express.static(staticDir));
 
 app.use("/api/user", require("./routes/userRoutes"));
 app.get("/verify/:verificationToken", userVerification);
