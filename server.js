@@ -9,7 +9,7 @@ const path = require("path");
 
 const staticDir = path.join(__dirname, "public");
 
-const dbSync = require("./dbSetup");
+const dbConnector = require("./db");
 const { userVerification } = require("./controllers/userController");
 
 require("dotenv").config();
@@ -35,12 +35,7 @@ app.use(express.static(staticDir));
 app.use("/api/user", require("./routes/userRoutes"));
 app.get("/verify/:verificationToken", userVerification);
 
-
-
-
-
-dbSync.sync().then(() => {
-  app.listen(port, () => {
-    console.log(`Server started at port:${port}`);
-  });
+dbConnector();
+app.listen(port, () => {
+  console.log(`Server started at port:${port}`);
 });

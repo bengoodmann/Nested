@@ -1,7 +1,5 @@
 const { Router } = require("express");
 const {
-  registerUser,
-  loginUser,
   requestUserVerification,
   passwordResetDone,
   changePassword,
@@ -10,11 +8,13 @@ const {
   uploadProfilePicture,
   upload,
 } = require("../controllers/userController");
-const authenticateToken = require("../middlewares/authenticate");
+const authenticateToken = require("../middlewares/tokenHandler");
+const validate = require("../middlewares/userDetailsHandler");
+const {registerUser, loginUser} = require("../auth/authUser");
 
 const router = Router();
 
-router.post("/register", registerUser);
+router.post("/register", validate, registerUser);
 router.post("/login", loginUser);
 router.post("/edit-profile", authenticateToken, editUserProfile);
 router.post("/upload/profile-picture", authenticateToken, upload, uploadProfilePicture);

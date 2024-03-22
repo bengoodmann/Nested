@@ -1,51 +1,38 @@
-const sequelize = require("../dbSetup")
-const {v4:uuidv4} = require("uuid")
-const {DataTypes} = require("sequelize")
+const mongoose = require("mongoose")
 
-const User = sequelize.define("User", {
-  id: {
-    type: DataTypes.UUID,
-    defaultValue: () => uuidv4(),
-    primaryKey: true,
-    allowNull: false,
-    unique: true,
-  },
+
+const userSchema = new mongoose.Schema({
   name: {
-    type: DataTypes.STRING,
-    allowNull: false,
-    validate: {
-      len: [1, 100],
-    },
+    type: String,
+    required: [true, "Please add your first name or full name"],
+    maxlength: 50,
   },
+
   email: {
-    type: DataTypes.STRING,
-    allowNull: false,
-    unique: true,
-    validate: {
-      isEmail: true,
-    },
+    type: String,
+    required: [true, "Please add your email"],
+    unique: [true, "Email already taken"],
   },
-   profilePicture: {
-    type: DataTypes.STRING,
-    allowNull: false
+  profilePicture: {
+    type: String,
   },
   verified: {
-    type: DataTypes.BOOLEAN,
-    defaultValue: false,
+    type: Boolean,
+    default: false,
   },
   verificationToken: {
-    type: DataTypes.STRING,
-    allowNull: false,
+    type: String,
   },
   password: {
-    type: DataTypes.STRING,
-    allowNull: false,
+    type: String,
+    required: true,
   },
   passwordResetToken: {
-    type: DataTypes.STRING,
-    allowNull: true
-  }
+    type: String,
+    required: false,
+  },
 });
 
+const User = mongoose.model("User", userSchema)
 
-module.exports = User;
+module.exports = User

@@ -1,12 +1,9 @@
 const bcrypt = require("bcryptjs");
-const jwt = require("jsonwebtoken");
 const crypto = require("crypto");
 const multer = require("multer");
-const { createCanvas, loadImage } = require("canvas");
 const path = require("path");
 
 const User = require("../models/userModel");
-
 
 const {
   sendEmailVerification,
@@ -15,97 +12,9 @@ const {
 
 require("dotenv").config();
 
-const registerUser = async (req, res) => {
-  try {
-    const { name, email, password } = req.body;
-    
-    const checkEmail = await User.findOne({ where: { email } });
-    if (checkEmail) {
-      return res.status(401).json({ error: "User with this email exists" });
-    }
-    const verificationToken = crypto.randomBytes(20).toString("hex");
-    const hashPassword = await bcrypt.hash(password, 10);
-
-    const canvas = createCanvas(200, 200, "pdf");
-    const ctx = canvas.getContext("2d");
-
-    ctx.fillStyle = "#3498db";
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
-
-    ctx.font = "80px Arial";
-    ctx.fillStyle = "#ffffff"; // Text color
-    ctx.textAlign = "center";
-    ctx.textBaseline = "middle";
-    ctx.fillText(
-      name.charAt(0).toUpperCase(),
-      canvas.width / 2,
-      canvas.height / 2
-    );
-
-    const profilePicture = canvas.toDataURL();
-
-    const newUser = await User.create({
-      name: name,
-      email: email,
-      verificationToken: verificationToken,
-      password: hashPassword,
-      profilePicture: profilePicture,
-    });
-    sendEmailVerification(newUser);
-    return res.status(201).json({
-      "User created successfully": {
-        name: newUser.name,
-        email: newUser.email,
-        verified: newUser.verified,
-      },
-    });
-  } catch (error) {
-    console.log(error);
-    return res.status(500).json({ error: "Internal error occurred" });
-  }
-};
-
-const loginUser = async (req, res) => {
-  try {
-    const { email, password } = req.body;
-    if (!(email && password))
-      return res.status(401).json({ error: "Email and password are required" });
-
-    const user = await User.findOne({ where: { email } });
-    if (!user) {
-      return res
-        .status(401)
-        .json({ error: "User with this email doesn't exist" });
-    }
-    const isPasswordValid = await bcrypt.compare(password, user.password);
-    if (!isPasswordValid) {
-      return res
-        .status(401)
-        .json({ error: "The password you entered is wrong" });
-    }
-    if (user && isPasswordValid) {
-      const token = jwt.sign(
-        {
-          user: {
-            name: user.name,
-            email: user.email,
-            id: user.id,
-          },
-        },
-        process.env.JWT_SECRET,
-        { expiresIn: "60m" }
-      );
-      return res.status(200).json({ "access-token": token });
-    }
-  } catch (error) {
-    console.log("Registration failed", error);
-    return res.status(500).json({ error: "Registration failed" });
-  }
-};
-
 const userVerification = async (req, res) => {
   const verificationToken = req.params.verificationToken;
-  const user = await User.findOne({ where: { verificationToken } });
+  const user = await User.findOne({ verificationToken: verificationToken });
   if (!user) {
     return res.status(404).json("User not found");
   }
@@ -164,7 +73,7 @@ const forgottenPasswordRequest = async (req, res) => {
     return res.status(400).json({ error: "Your email is required" });
   }
   try {
-    const user = await User.findOne({ where: { email } });
+    const user = await User.findOne({ email: email });
     if (!user) {
       return res.status(404).json("User doesn't exist");
     }
@@ -180,7 +89,7 @@ const forgottenPasswordRequest = async (req, res) => {
 
 const passwordResetDone = async (req, res) => {
   const token = req.params.passwordResetToken;
-  const user = await User.findOne({ where: { passwordResetToken: token } });
+  const user = await User.findOne({ passwordResetToken: token });
 
   if (!user) {
     res.status(404).json("User not found");
@@ -191,7 +100,10 @@ const passwordResetDone = async (req, res) => {
   }
 
   const hashPassword = await bcrypt.hash(newPassword, 10);
-  await user.update({ password: hashPassword });
+  const updateDetails = {
+    password: hashPassword,
+  };
+  await user.updateOne({_id: user._id},{$set: updateDetails  });
   return res.status(200).json("Password was changed successfully");
 };
 
@@ -201,7 +113,7 @@ const editUserProfile = async (req, res) => {
   const updateDetails = {
     name: name || user.name,
   };
-  await User.update(updateDetails, { where: { id: user.id } });
+  await User.updateOne({ _id: user._id }, {$set: updateDetails});
   return res.status(200).json("User updated successfully");
 };
 
@@ -218,32 +130,36 @@ const storage = multer.diskStorage({
     cb(null, destinationDir);
   },
   filename: function (req, file, cb) {
-    cb(null, `${req.user.id}-${file.originalname}`);
+    cb(null, `${req.user._id}-${file.originalname}`);
   },
 });
 
 const upload = multer({ storage: storage }).single("profilePicture");
 
 const uploadProfilePicture = async (req, res) => {
-  const user = req.user;
-  if(!user){
-    return res.status(401).json({ message: "Unauthorized" });
-  }
-  if (!req.file) {
-    return res.status(400).json({ message: "No file uploaded" });
-  }
+  try {
+    const user = req.user;
+    if (!user) {
+      return res.status(401).json({ message: "Unauthorized" });
+    }
+    if (!req.file) {
+      return res.status(400).json({ message: "No file uploaded" });
+    }
 
-  const filename = req.file.filename;
-  await User.update({ profilePicture: filename }, { where: { id: user.id } });
-  return res.json({
-    message: "Profile picture uploaded successfully",
-    filename,
-  });
+    const updateFile = { profilePicture: req.file.filename };
+
+    await User.updateOne({ _id: user._id }, { $set: updateFile });
+    return res.json({
+      message: "Profile picture uploaded successfully",
+    });
+  } catch (error) {
+    console.log(error)
+    res.status(500).json("Internal error")
+  }
+  
 };
 
 module.exports = {
-  registerUser,
-  loginUser,
   userVerification,
   requestUserVerification,
   changePassword,
