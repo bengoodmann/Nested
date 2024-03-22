@@ -33,6 +33,7 @@ app.use(morgan("common", { stream: accessLogStream }));
 app.use(express.static(staticDir));
 
 app.use("/api/user", require("./routes/userRoutes"));
+app.use("/api/task", require("./routes/taskRoutes"));
 app.get("/verify/:verificationToken", userVerification);
 
 dbConnector();
